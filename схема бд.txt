@@ -1,0 +1,76 @@
+-- Создаем базу данных, если она не существует
+CREATE DATABASE IF NOT EXISTS anime_parser_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE anime_parser_db;
+
+-- Таблица для хранения типов контента (ТВ-сериал, Фильм, OVA и т.д.)
+CREATE TABLE IF NOT EXISTS content_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Основная таблица для хранения информации об аниме
+CREATE TABLE IF NOT EXISTS anime (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    slug VARCHAR(255) UNIQUE NOT NULL COMMENT 'Уникальное имя из URL jut.su (e.g., "oneepiece")',
+    title_rus VARCHAR(255) NOT NULL COMMENT 'Русское название с jut.su',
+    title_orig VARCHAR(255) COMMENT 'Оригинальное название с Jikan API',
+    description_api TEXT COMMENT 'Полное описание с Jikan API',
+    poster_url_api VARCHAR(512) COMMENT 'URL постера с Jikan API',
+    age_rating VARCHAR(100) COMMENT 'Возрастной рейтинг (e.g., "R - 17+")',
+    status VARCHAR(100) COMMENT 'Статус (Finished Airing, Currently Airing)',
+    year INT COMMENT 'Год выхода',
+    score DECIMAL(4, 2) COMMENT 'Оценка с Jikan API',
+    content_type_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (content_type_id) REFERENCES content_types(id)
+);
+
+-- Таблица для хранения сезонов
+CREATE TABLE IF NOT EXISTS seasons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    anime_id INT NOT NULL,
+    season_number INT NOT NULL,
+    title VARCHAR(255),
+    UNIQUE(anime_id, season_number), -- Каждый сезон для аниме уникален
+    FOREIGN KEY (anime_id) REFERENCES anime(id) ON DELETE CASCADE
+);
+
+-- Таблица для хранения информации об эпизодах
+CREATE TABLE IF NOT EXISTS episodes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    anime_id INT NOT NULL,
+    season_id INT,
+    episode_number INT NOT NULL,
+    title VARCHAR(255) COMMENT 'Название эпизода с jut.su',
+    source_url VARCHAR(512) UNIQUE NOT NULL COMMENT 'URL эпизода на jut.su',
+    poster_local_path VARCHAR(512) COMMENT 'Локальный путь к скачанному постеру',
+    duration_sec INT COMMENT 'Длительность в секундах',
+    opening_start_sec INT,
+    opening_end_sec INT,
+    ending_start_sec INT,
+    ending_end_sec INT,
+    next_episode_url VARCHAR(512),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (anime_id) REFERENCES anime(id) ON DELETE CASCADE,
+    FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+-- Таблица для хранения жанров
+CREATE TABLE IF NOT EXISTS genres (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL
+);
+
+-- Связующая таблица для отношений "многие-ко-многим" между аниме и жанрами
+CREATE TABLE IF NOT EXISTS anime_genres (
+    anime_id INT NOT NULL,
+    genre_id INT NOT NULL,
+    PRIMARY KEY (anime_id, genre_id),
+    FOREIGN KEY (anime_id) REFERENCES anime(id) ON DELETE CASCADE,
+    FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
+);
+
+-- Предварительно заполняем типы контента
+INSERT IGNORE INTO content_types (name) VALUES ('TV'), ('Movie'), ('OVA'), ('Special'), ('ONA');
+
