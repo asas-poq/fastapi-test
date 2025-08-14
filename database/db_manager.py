@@ -4,20 +4,27 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 import config
 from .models import Base, Anime, Season, Episode, Genre, ContentType
-import os
+
 
 class DatabaseManager:
     def __init__(self):
-        if os.getenv("USE_SQLITE", "true").lower() == "true":
-            # SQLite вместо MySQL
-            db_url = "sqlite:///./test.db"
-        else:
-            # Подключение к MySQL
+        try:
+            # Пытаемся подключиться к MySQL
             db_url = f"mysql+mysqlconnector://{config.DB_USER}:{config.DB_PASSWORD}@{config.DB_HOST}/{config.DB_NAME}"
-        
-        self.engine = create_engine(db_url, echo=False)
+            self.engine = create_engine(db_url, echo=False)
+            # Пробуем запрос, чтобы проверить соединение
+            with self.engine.connect() as conn:
+                conn.execute("SELECT 1")
+            print("✅ Подключено к MySQL")
+        except OperationalError:
+            # Если не удалось — используем SQLite
+            print("⚠️ MySQL недоступен, переключаюсь на SQLite")
+            db_url = "sqlite:///./test.db"
+            self.engine = create_engine(db_url, echo=False)
+
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+
 
 
     @contextmanager
