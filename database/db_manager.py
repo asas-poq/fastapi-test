@@ -4,13 +4,21 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 import config
 from .models import Base, Anime, Season, Episode, Genre, ContentType
+import os
 
 class DatabaseManager:
     def __init__(self):
-        db_url = f"mysql+mysqlconnector://{config.DB_USER}:{config.DB_PASSWORD}@{config.DB_HOST}/{config.DB_NAME}"
+        if os.getenv("USE_SQLITE", "true").lower() == "true":
+            # SQLite вместо MySQL
+            db_url = "sqlite:///./test.db"
+        else:
+            # Подключение к MySQL
+            db_url = f"mysql+mysqlconnector://{config.DB_USER}:{config.DB_PASSWORD}@{config.DB_HOST}/{config.DB_NAME}"
+        
         self.engine = create_engine(db_url, echo=False)
-        Base.metadata.create_all(self.engine) # Создает таблицы, если их нет
+        Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+
 
     @contextmanager
     def session_scope(self):
