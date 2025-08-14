@@ -85,6 +85,8 @@ db_manager = DatabaseManager()
 # api/endpoints.py
 import sqlite3
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
+
 
 db_url = "sqlite:///./test.db"
 db_path = "./test.db"  # для sqlite3 нужен путь без 'sqlite:///'
